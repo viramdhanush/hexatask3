@@ -1,0 +1,120 @@
+import pygame
+import random
+import time
+
+# Initialize pygame
+pygame.init()
+
+# Constants
+WIDTH, HEIGHT = 600, 400
+ROWS, COLS = 4, 4
+CARD_WIDTH = WIDTH // COLS
+CARD_HEIGHT = HEIGHT // ROWS
+FPS = 30
+TIME_LIMIT = 60  # Time limit for the game (seconds)
+
+# Colors
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GRAY = (200, 200, 200)
+BLUE = (0, 0, 255)
+RED = (255, 0, 0)
+
+# Initialize screen
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Memory Puzzle Game")
+font = pygame.font.Font(None, 36)
+clock = pygame.time.Clock()
+
+
+# Create cards and shuffle them
+def create_cards():
+    numbers = list(range(1, (ROWS * COLS) // 2 + 1)) * 2
+    random.shuffle(numbers)
+    return numbers
+
+
+cards = create_cards()
+revealed = [[False] * COLS for _ in range(ROWS)]
+first_card = None
+matches = 0
+start_time = time.time()
+
+
+# Draw the game grid
+def draw_grid():
+    for row in range(ROWS):
+        for col in range(COLS):
+            x = col * CARD_WIDTH
+            y = row * CARD_HEIGHT
+
+            if revealed[row][col]:
+                # Draw revealed card number
+                number_text = font.render(str(cards[row * COLS + col]), True, BLUE)
+                screen.blit(number_text, (x + CARD_WIDTH // 2 - 10, y + CARD_HEIGHT // 2 - 20))
+            else:
+                # Draw card back
+                pygame.draw.rect(screen, GRAY, (x, y, CARD_WIDTH, CARD_HEIGHT))
+
+            pygame.draw.rect(screen, BLACK, (x, y, CARD_WIDTH, CARD_HEIGHT), 3)
+
+
+# Main game loop
+running = True
+while running:
+    screen.fill(WHITE)
+
+    # Get elapsed time
+    elapsed_time = time.time() - start_time
+    time_left = TIME_LIMIT - int(elapsed_time)
+
+    # Draw timer
+    timer_text = font.render(f"Time Left: {time_left}s", True, RED)
+    screen.blit(timer_text, (10, 10))
+
+    if matches == (ROWS * COLS) // 2 or time_left <= 0:
+        # Check win or lose condition
+        if matches == (ROWS * COLS) // 2:
+            end_text = font.render("You Win!", True, BLUE)
+        else:
+            end_text = font.render("Time's Up!", True, RED)
+        screen.blit(end_text, (WIDTH // 2 - 80, HEIGHT // 2))
+        pygame.display.update()
+        pygame.time.wait(2000)
+        running = False
+        break
+
+    draw_grid()
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if first_card is not None:
+                continue  # Wait for the current pair to be revealed
+
+            mouse_x, mouse_y = pygame.mouse.get_pos()
+            col = mouse_x // CARD_WIDTH
+            row = mouse_y // CARD_HEIGHT
+
+            if not revealed[row][col]:
+                revealed[row][col] = True
+
+                if first_card is None:
+                    first_card = (row, col)
+                else:
+                    # Check if the second card matches the first one
+                    first_row, first_col = first_card
+                    if cards[first_row * COLS + first_col] != cards[row * COLS + col]:
+                        pygame.time.wait(1000)  # Pause to show the cards
+                        revealed[first_row][first_col] = False
+                        revealed[row][col] = False
+                    else:
+                        matches += 1
+                    first_card = None
+
+    pygame.display.update()
+    clock.tick(FPS)
+
+pygame.quit()
